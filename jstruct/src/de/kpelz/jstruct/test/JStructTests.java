@@ -1,5 +1,7 @@
 package de.kpelz.jstruct.test;
 
+import static org.junit.Assert.fail;
+
 import org.junit.Test;
 
 import de.kpelz.jstruct.main.JStruct;
@@ -37,32 +39,33 @@ public class JStructTests {
 		JStruct invalidStruct;
 		try {
 			invalidStruct = new JStruct("");
-		} catch (JStructException e) {
-		} finally {
+			fail();
+		} catch (JStructException e1) {
 			try {
 				invalidStruct = new JStruct("<");
-			} catch (JStructException e) {
-			} finally {
+				fail();
+			} catch (JStructException e2) {
 				try {
 					invalidStruct = new JStruct(">");
-				} catch (JStructException e) {
-				} finally {
+					fail();
+				} catch (JStructException e3) {
 					try {
 						invalidStruct = new JStruct("=");
-					} catch (JStructException e) {
-					} finally {
+						fail();
+					} catch (JStructException e4) {
 						try {
 							invalidStruct = new JStruct("!");
-						} catch (JStructException e) {
-						} finally {
+							fail();
+						} catch (JStructException e5) {
 							try {
 								invalidStruct = new JStruct("@");
-							} catch (JStructException e) {
-							} finally {
+								fail();
+							} catch (JStructException e6) {
 								try {
 									invalidStruct = new JStruct("@x");
-								} catch (JStructException e) {
-								}
+									fail();
+								} catch (JStructException e7) {
+								} 
 							}
 						}
 					}
