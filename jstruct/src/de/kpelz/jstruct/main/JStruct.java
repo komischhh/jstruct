@@ -186,7 +186,7 @@ import java.util.logging.Logger;
  */
 public class JStruct {
 
-	private static Map<Character, Integer> formatCharacterSizes;
+	private final static Map<Character, Integer> FORMAT_CHARACTERS_SIZES;
 
 	static {
 		Map<Character, Integer> map = new HashMap<>();
@@ -206,10 +206,10 @@ public class JStruct {
 		map.put('d', 8);
 		map.put('s', 1);
 		map.put('p', 1);
-		formatCharacterSizes = map;
+		FORMAT_CHARACTERS_SIZES = map;
 	}
 
-	private static Map<Character, ByteOrder> byteOrderIdentifier;
+	private final static Map<Character, ByteOrder> BYTE_ORDER_IDENTIFIER;
 
 	static {
 		Map<Character, ByteOrder> map = new HashMap<>();
@@ -217,7 +217,7 @@ public class JStruct {
 		map.put('<', ByteOrder.LITTLE_ENDIAN);
 		map.put('>', ByteOrder.BIG_ENDIAN);
 		map.put('!', ByteOrder.nativeOrder());
-		byteOrderIdentifier = map;
+		BYTE_ORDER_IDENTIFIER = map;
 	}
 
 	private String format;
@@ -252,8 +252,10 @@ public class JStruct {
 		} else if (format.startsWith("@")) {
 			throw new JStructException(
 					"Structs starting with '@' are currently not supported. Please prefer to use '<' or '>'.");
+		} else if (format.matches("^[=<>!]{1}")) {
+			byteOrder = BYTE_ORDER_IDENTIFIER.get(formatArray[0]);
 		} else {
-			byteOrder = byteOrderIdentifier.get(formatArray[0]);
+			byteOrder = ByteOrder.nativeOrder();
 		}
 	}
 
@@ -278,7 +280,7 @@ public class JStruct {
 
 		for (int j = 0; j < formatArray.length; j++) {
 			char type = formatArray[j];
-			ByteBuffer bb = ByteBuffer.allocate(formatCharacterSizes.get(type));
+			ByteBuffer bb = ByteBuffer.allocate(FORMAT_CHARACTERS_SIZES.get(type));
 			bb.order(byteOrder);
 
 			if (type == 'x') {
@@ -418,35 +420,55 @@ public class JStruct {
 			throw new JStructException("The buffers size is wrong. It should be "
 					+ calculateSize(format) + " but it's " + buffer.length + ".");
 		}
-		Object[] result = new String[calculateSizeOfStringArray(formatArray)];
+		Object[] result = new Object[calculateSizeOfStringArray(formatArray)];
 		int resPos = 0;
 		int pos = 0;
 		StringBuilder sb = new StringBuilder();
 
 		for (int j = 0; j < formatArray.length; j++) {
 			char type = formatArray[j];
-			if (!formatCharacterSizes.keySet().contains(type)) {
+			if (!FORMAT_CHARACTERS_SIZES.keySet().contains(type)) {
 				continue;
 			}
 			if (type == 'x') {
 				pos++;
 			}
-			ByteBuffer bb = ByteBuffer.allocate(formatCharacterSizes.get(type));
+			ByteBuffer bb = ByteBuffer.allocate(FORMAT_CHARACTERS_SIZES.get(type));
 			bb.order(byteOrder);
-			for (int x = 0; x < formatCharacterSizes.get(type); x++) {
+			for (int x = 0; x < FORMAT_CHARACTERS_SIZES.get(type); x++) {
 				bb.put(buffer[pos++]);
 			}
+			bb.flip();
 			if (type == 'c') {
-				char c = bb.getChar();
+				char c = (char) bb.get();
 				result[resPos++] = c;
-			} else if (type == 'b' || type == 'B' || type == 'h' || type == 'H'
-					|| type == 'i' || type == 'I' || type == 'l') {
+			} else if (type == 'b') {
+				int i = bb.get();
+				result[resPos++] = i;
+			} else if (type == 'B') {
+				int i = (bb.get() & 0xff);
+				result[resPos++] = i;
+			} else if (type == 'h') {
+				int i = bb.getShort();
+				result[resPos++] = i;
+			} else if (type == 'H') {
+				int i = ((bb.get() & 0xff) | (short) (bb.get() << 8));
+				result[resPos++] = i;
+			} else if (type == 'i' || type == 'l') {
 				int i = bb.getInt();
+				result[resPos++] = i;
+			} else if (type == 'I') {
+				int i = ((bb.get() & 0xff) | ((short) (bb.get() << 8))
+						| ((int) (bb.get() << 16)));
 				result[resPos++] = i;
 			} else if (type == '?') {
 				boolean b = !(bb.get() == 0);
 				result[resPos++] = b;
-			} else if (type == 'L' || type == 'q') {
+			} else if (type == 'L') {
+				long l = ((bb.get() & 0xff) | ((short) (bb.get() << 8))
+						| ((int) (bb.get() << 16)) | ((long) (bb.get() << 24)));
+				result[resPos++] = l;
+			} else if (type == 'q') {
 				long l = bb.getLong();
 				result[resPos++] = l;
 			} else if (type == 'f') {
@@ -458,7 +480,7 @@ public class JStruct {
 			} else if (type == 's') {
 				char c = bb.getChar();
 				sb.append(c);
-				if (!(formatArray[j + 1] == 's')) {
+				if (formatArray.length == j || !(formatArray[j + 1] == 's')) {
 					result[resPos++] = sb.toString();
 					sb = new StringBuilder();
 				}
@@ -613,12 +635,12 @@ public class JStruct {
 		for (char c : format.toCharArray()) {
 			if (Character.isDigit(c)) {
 				countReader.append(c);
-			} else if (formatCharacterSizes.keySet().contains(c)) {
+			} else if (FORMAT_CHARACTERS_SIZES.keySet().contains(c)) {
 				if (countReader.length() != 0) {
 					count = Integer.parseInt(countReader.toString());
 					countReader = new StringBuilder();
 				}
-				size += formatCharacterSizes.get(c) * count;
+				size += FORMAT_CHARACTERS_SIZES.get(c) * count;
 				count = 1;
 			}
 		}
@@ -628,7 +650,7 @@ public class JStruct {
 	private static int calculateSizeOfStringArray(char[] formatArray) {
 		int result = 0;
 		for (char c : formatArray) {
-			if (formatCharacterSizes.keySet().contains(c) && c != 'x') {
+			if (FORMAT_CHARACTERS_SIZES.keySet().contains(c) && c != 'x') {
 				result++;
 			}
 		}
@@ -643,7 +665,7 @@ public class JStruct {
 		for (char c : format.toCharArray()) {
 			if (Character.isDigit(c)) {
 				sb.append(c);
-			} else if (formatCharacterSizes.keySet().contains(c)) {
+			} else if (FORMAT_CHARACTERS_SIZES.keySet().contains(c)) {
 				if (sb.length() != 0) {
 					count = Integer.parseInt(sb.toString());
 					sb = new StringBuilder();
@@ -660,7 +682,7 @@ public class JStruct {
 	private static boolean verifyFormat(String format) {
 		StringBuilder sb = new StringBuilder();
 		sb.append("^[@=<>!]?[0-9");
-		for (char c : formatCharacterSizes.keySet()) {
+		for (char c : FORMAT_CHARACTERS_SIZES.keySet()) {
 			sb.append(c);
 		}
 		sb.append("]+$");
