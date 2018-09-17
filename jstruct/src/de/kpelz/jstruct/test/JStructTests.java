@@ -1,7 +1,10 @@
 package de.kpelz.jstruct.test;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import de.kpelz.jstruct.main.JStruct;
@@ -61,17 +64,95 @@ public class JStructTests {
 								invalidStruct = new JStruct("@");
 								fail();
 							} catch (JStructException e6) {
-								try {
-									invalidStruct = new JStruct("@x");
-									fail();
-								} catch (JStructException e7) {
-								} 
 							}
 						}
 					}
 				}
 			}
 		}
+	}
+
+	@Test
+	public void unpack_c_valuesTest() throws JStructException {
+		// TODO fix test
+		byte[] buffer = new byte[6];
+		// a
+		buffer[0] = Byte.valueOf("a");
+		// b
+		buffer[1] = Byte.valueOf("b");
+		// c
+		buffer[2] = Byte.valueOf("c");
+		// x
+		buffer[3] = Byte.valueOf("x");
+		// y
+		buffer[4] = Byte.valueOf("y");
+		// z
+		buffer[5] = Byte.valueOf("z");
+
+		JStruct bStruct = new JStruct("cccccc");
+		Object[] values = bStruct.unpack(buffer);
+
+		assertEquals('B', (char) values[0]);
+		assertEquals('a', (char) values[1]);
+		assertEquals('a', (char) values[2]);
+		assertEquals('a', (char) values[3]);
+		assertEquals('a', (char) values[4]);
+		assertEquals('a', (char) values[5]);
+
+	}
+
+	@Test
+	public void unpack_b_valuesTest() throws JStructException {
+		byte[] buffer = new byte[6];
+		// 0000 0000
+		buffer[0] = 0;
+		// 1111 1111
+		buffer[1] = (byte) ~(buffer[0]);
+		// 0000 1111
+		buffer[2] = (byte) (buffer[0] | 1 << 0 | 1 << 1 | 1 << 2 | 1 << 3);
+		// 1111 0000
+		buffer[3] = (byte) ~(buffer[2]);
+		// 1000 0000
+		buffer[4] = (byte) (buffer[0] | 1 << 7);
+		// 0111 1111
+		buffer[5] = (byte) ~(buffer[4]);
+
+		JStruct bStruct = new JStruct("bbbbbb");
+		Object[] values = bStruct.unpack(buffer);
+
+		assertEquals(0, (int) values[0]);
+		assertEquals(-1, (int) values[1]);
+		assertEquals(15, (int) values[2]);
+		assertEquals(-16, (int) values[3]);
+		assertEquals(-128, (int) values[4]);
+		assertEquals(127, (int) values[5]);
+	}
+
+	@Test
+	public void unpack_B_valuesTest() throws JStructException {
+		byte[] buffer = new byte[6];
+		// 0000 0000
+		buffer[0] = 0;
+		// 1111 1111
+		buffer[1] = (byte) ~(buffer[0]);
+		// 0000 1111
+		buffer[2] = (byte) (buffer[0] | 1 << 0 | 1 << 1 | 1 << 2 | 1 << 3);
+		// 1111 0000
+		buffer[3] = (byte) ~(buffer[2]);
+		// 1000 0000
+		buffer[4] = (byte) (buffer[0] | 1 << 7);
+		// 0111 1111
+		buffer[5] = (byte) ~(buffer[4]);
+
+		JStruct BStruct = new JStruct("BBBBBB");
+		Object[] values = BStruct.unpack(buffer);
+
+		assertEquals(0, (int) values[0]);
+		assertEquals(255, (int) values[1]);
+		assertEquals(15, (int) values[2]);
+		assertEquals(240, (int) values[3]);
+		assertEquals(128, (int) values[4]);
+		assertEquals(127, (int) values[5]);
 	}
 
 }
