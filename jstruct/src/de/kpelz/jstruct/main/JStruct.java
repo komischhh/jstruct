@@ -8,7 +8,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Copyright &#169 2018 Konstantin Pelz<br>
+ * Copyright &#169; 2018 Konstantin Pelz<br>
  * <br>
  * This program is free software: you can redistribute it and/or modify it under
  * the terms of the GNU General Public License as published by the Free Software
@@ -17,7 +17,8 @@ import java.util.logging.Logger;
  * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
  * details. You should have received a copy of the GNU General Public License
- * along with this program. If not, see <http://www.gnu.org/licenses/>.<br>
+ * along with this program. If not, see
+ * <a href="http://www.gnu.org/licenses/">http://www.gnu.org/licenses/</a>.<br>
  * <br>
  * Equivalence to <code>struct</code> in Python. This plugin converts C structs
  * into Java values and vica versa.<br>
@@ -310,10 +311,13 @@ public class JStruct {
 	 * @return byte array with the values packed as bytes
 	 * @throws JStructException
 	 */
-	public byte[] pack(Object... values) throws JStructException {
-		if (calculateSizeOfStringArray(formatArray) != values.length) {
+	public byte[] pack(Object[] values) throws JStructException {
+		if (calculateSizeOfObjectArray(formatArray) != values.length) {
 			throw new JStructException(
-					"The number of values does not match the number of values from the format.");
+					"The number of values does not match the number of values from the format."
+							+ "You have " + values.length + " objects but "
+							+ calculateSizeOfObjectArray(formatArray)
+							+ " are required.");
 		}
 		byte[] result = new byte[size];
 		int resPos = 0;
@@ -321,12 +325,19 @@ public class JStruct {
 
 		for (int j = 0; j < formatArray.length; j++) {
 			char type = formatArray[j];
+
+			if (!FORMAT_CHARACTER_SIZES.containsKey(type)) {
+				throw new JStructException("Unknown type: " + type);
+			}
+			if (type == 'x') {
+				result[resPos++] = 0;
+				continue;
+			}
+
 			ByteBuffer bb = ByteBuffer.allocate(FORMAT_CHARACTER_SIZES.get(type));
 			bb.order(byteOrder);
 
-			if (type == 'x') {
-				result[resPos++] = 0;
-			} else if (type == 'c') {
+			if (type == 'c') {
 				if (!values[valPos].getClass().equals(char.class)) {
 					throw new JStructException("Excpected a char but got a "
 							+ values[valPos].getClass().getName() + ".");
@@ -341,22 +352,56 @@ public class JStruct {
 				}
 				boolean b = (boolean) values[valPos++];
 				result[resPos++] = (byte) (b ? 1 : 0);
-			} else if (type == 'b' || type == 'B' || type == 'h' || type == 'H'
-					|| type == 'i' || type == 'I' || type == 'l') {
-				if (!values[valPos].getClass().equals(int.class)) {
+			} else if (type == 'b' || type == 'B') {
+				if (!values[valPos].getClass().equals(int.class)
+						&& !values[valPos].getClass().equals(Integer.class)) {
 					throw new JStructException("Excpected a int but got a "
 							+ values[valPos].getClass().getName() + ".");
 				}
-				int i = (int) values[valPos++];
-				bb.putInt(i);
+				byte b = (byte) (((int) values[valPos++]) & (0xff));
+				bb.put(b);
+				bb.flip();
 				bb.get(result, resPos, bb.capacity());
 				resPos += bb.capacity();
-			} else if (type == 'L' || type == 'q') {
-				if (!values[valPos].getClass().equals(long.class)) {
+			} else if (type == 'h' || type == 'H') {
+				if (!values[valPos].getClass().equals(int.class)
+						&& !values[valPos].getClass().equals(Integer.class)) {
+					throw new JStructException("Excpected a int but got a "
+							+ values[valPos].getClass().getName() + ".");
+				}
+				short s = (short) (((int) values[valPos++]) & (0xffff));
+				bb.putShort(s);
+				bb.flip();
+				bb.get(result, resPos, bb.capacity());
+				resPos += bb.capacity();
+			} else if (type == 'i' || type == 'l') {
+				if (!values[valPos].getClass().equals(int.class)
+						&& !values[valPos].getClass().equals(Integer.class)) {
+					throw new JStructException("Excpected a int but got a "
+							+ values[valPos].getClass().getName() + ".");
+				}
+				int i = ((int) values[valPos++]) & 0xffffffff;
+				bb.putInt(i);
+				bb.flip();
+				bb.get(result, resPos, bb.capacity());
+				resPos += bb.capacity();
+			} else if (type == 'I' || type == 'L') {
+				if (!values[valPos].getClass().equals(int.class)
+						&& !values[valPos].getClass().equals(Long.class)) {
 					throw new JStructException("Excpected a long but got a "
 							+ values[valPos].getClass().getName() + ".");
 				}
-				long l = (long) values[valPos++];
+				int i = (int) ((long) values[valPos++] & 0xffffffff);
+				bb.putInt(i);
+				bb.flip();
+				bb.get(result, resPos, bb.capacity());
+				resPos += bb.capacity();
+			} else if (type == 'q') {
+				if (!values[valPos].getClass().equals(Long.class)) {
+					throw new JStructException("Excpected a long but got a "
+							+ values[valPos].getClass().getName() + ".");
+				}
+				long l = ((long) values[valPos++]);
 				bb.putLong(l);
 				bb.get(result, resPos, bb.capacity());
 				resPos += bb.capacity();
@@ -397,6 +442,7 @@ public class JStruct {
 			}
 		}
 		return result;
+
 	}
 
 	/**
@@ -461,7 +507,7 @@ public class JStruct {
 			throw new JStructException("The buffers size is wrong. It should be "
 					+ calculateSize(format) + " but it's " + buffer.length + ".");
 		}
-		Object[] result = new Object[calculateSizeOfStringArray(formatArray)];
+		Object[] result = new Object[calculateSizeOfObjectArray(formatArray)];
 		int resPos = 0;
 		int pos = 0;
 		StringBuilder sb = new StringBuilder();
@@ -685,7 +731,7 @@ public class JStruct {
 		return size;
 	}
 
-	private static int calculateSizeOfStringArray(char[] formatArray) {
+	private static int calculateSizeOfObjectArray(char[] formatArray) {
 		int result = 0;
 		for (char c : formatArray) {
 			if (FORMAT_CHARACTER_SIZES.keySet().contains(c) && c != 'x') {
@@ -695,8 +741,27 @@ public class JStruct {
 		return result;
 	}
 
+	private static int calculateSizeOfFormatArray(String format) {
+		int result = 0;
+		int count = 1;
+		StringBuilder sb = new StringBuilder();
+		for (char c : format.toCharArray()) {
+			if (Character.isDigit(c)) {
+				sb.append(c);
+			} else if (FORMAT_CHARACTER_SIZES.keySet().contains(c)) {
+				if (sb.length() != 0) {
+					count = Integer.parseInt(sb.toString());
+					sb = new StringBuilder();
+				}
+				result += count;
+				count = 1;
+			}
+		}
+		return result;
+	}
+
 	private static char[] convertFormatToArray(String format) {
-		char[] result = new char[calculateSize(format)];
+		char[] result = new char[calculateSizeOfFormatArray(format)];
 		int pos = 0;
 		int count = 1;
 		StringBuilder sb = new StringBuilder();
