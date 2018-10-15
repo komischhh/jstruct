@@ -92,17 +92,17 @@ public class UnpackTests {
 	public void unpack_b_valuesTest() throws JStructException {
 		byte[] buffer = new byte[6];
 		// 0000 0000
-		buffer[0] = 0;
+		buffer[0] = OOOO_OOOO;
 		// 1111 1111
-		buffer[1] = (byte) ~(buffer[0]);
+		buffer[1] = IIII_IIII;
 		// 0000 1111
-		buffer[2] = (byte) (buffer[0] | 1 << 0 | 1 << 1 | 1 << 2 | 1 << 3);
+		buffer[2] = OOOO_IIII;
 		// 1111 0000
-		buffer[3] = (byte) ~(buffer[2]);
+		buffer[3] = IIII_OOOO;
 		// 1000 0000
-		buffer[4] = (byte) (buffer[0] | 1 << 7);
+		buffer[4] = IOOO_OOOO;
 		// 0111 1111
-		buffer[5] = (byte) ~(buffer[4]);
+		buffer[5] = OIII_IIII;
 
 		JStruct struct = new JStruct("6b");
 		Object[] values = struct.unpack(buffer);
