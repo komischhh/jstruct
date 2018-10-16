@@ -312,7 +312,8 @@ public class JStruct {
 	 * @throws JStructException
 	 */
 	public byte[] pack(Object[] values) throws JStructException {
-		if (calculateSizeOfObjectArray(formatArray) != values.length) {
+		if (calculateSizeOfObjectArray(formatArray) != calculateSizeOfValueArray(
+				values)) {
 			throw new JStructException(
 					"The number of values does not match the number of values from the format."
 							+ "You have " + values.length + " objects but "
@@ -338,15 +339,19 @@ public class JStruct {
 			bb.order(byteOrder);
 
 			if (type == 'c') {
-				if (!values[valPos].getClass().equals(char.class)) {
+				if (!values[valPos].getClass().equals(Character.class)
+						&& !values[valPos].getClass().equals(char.class)) {
 					throw new JStructException("Excpected a char but got a "
 							+ values[valPos].getClass().getName() + ".");
 				}
-				char c = (char) values[valPos++];
-				bb.putChar(c);
-				result[resPos++] = bb.get();
+				byte b = (byte) (((char) values[valPos++]) & 0xff);
+				bb.put(b);
+				bb.flip();
+				bb.get(result, resPos, bb.capacity());
+				resPos += bb.capacity();
 			} else if (type == '?') {
-				if (!values[valPos].getClass().equals(boolean.class)) {
+				if (!values[valPos].getClass().equals(Boolean.class)
+						&& !values[valPos].getClass().equals(boolean.class)) {
 					throw new JStructException("Excpected a boolean but got a "
 							+ values[valPos].getClass().getName() + ".");
 				}
@@ -386,7 +391,7 @@ public class JStruct {
 				bb.get(result, resPos, bb.capacity());
 				resPos += bb.capacity();
 			} else if (type == 'I' || type == 'L') {
-				if (!values[valPos].getClass().equals(int.class)
+				if (!values[valPos].getClass().equals(long.class)
 						&& !values[valPos].getClass().equals(Long.class)) {
 					throw new JStructException("Excpected a long but got a "
 							+ values[valPos].getClass().getName() + ".");
@@ -397,30 +402,36 @@ public class JStruct {
 				bb.get(result, resPos, bb.capacity());
 				resPos += bb.capacity();
 			} else if (type == 'q') {
-				if (!values[valPos].getClass().equals(Long.class)) {
+				if (!values[valPos].getClass().equals(Long.class)
+						&& !values[valPos].getClass().equals(long.class)) {
 					throw new JStructException("Excpected a long but got a "
 							+ values[valPos].getClass().getName() + ".");
 				}
 				long l = ((long) values[valPos++]);
 				bb.putLong(l);
+				bb.flip();
 				bb.get(result, resPos, bb.capacity());
 				resPos += bb.capacity();
 			} else if (type == 'f') {
-				if (!values[valPos].getClass().equals(float.class)) {
+				if (!values[valPos].getClass().equals(Float.class)
+						&& !values[valPos].getClass().equals(float.class)) {
 					throw new JStructException("Excpected a float but got a "
 							+ values[valPos].getClass().getName() + ".");
 				}
-				float f = (float) values[valPos];
+				float f = (float) values[valPos++];
 				bb.putFloat(f);
+				bb.flip();
 				bb.get(result, resPos, bb.capacity());
 				resPos += bb.capacity();
 			} else if (type == 'd') {
-				if (!values[valPos].getClass().equals(double.class)) {
+				if (!values[valPos].getClass().equals(Double.class)
+						&& !values[valPos].getClass().equals(double.class)) {
 					throw new JStructException("Excpected a double but got a "
 							+ values[valPos].getClass().getName() + ".");
 				}
 				double d = (double) values[valPos++];
 				bb.putDouble(d);
+				bb.flip();
 				bb.get(result, resPos, bb.capacity());
 				resPos += bb.capacity();
 			} else if (type == 's') {
@@ -434,8 +445,11 @@ public class JStruct {
 					String s = (String) values[valPos++];
 					char[] cs = s.toCharArray();
 					for (char c : cs) {
-						bb.putChar(c);
-						result[resPos++] = bb.get();
+						byte b = (byte) (c & 0xff);
+						bb.put(b);
+						bb.flip();
+						bb.get(result, resPos, bb.capacity());
+						resPos += bb.capacity();
 						bb.clear();
 					}
 				}
@@ -605,7 +619,7 @@ public class JStruct {
 	 * @return byte array with the values packed as bytes
 	 * @throws JStructException
 	 */
-	public static byte[] pack(String format, Object... values)
+	public static byte[] pack(String format, Object[] values)
 			throws JStructException {
 		JStruct jStruct = new JStruct(format);
 		return jStruct.pack(values);
@@ -777,6 +791,18 @@ public class JStruct {
 					result[pos++] = c;
 				}
 				count = 1;
+			}
+		}
+		return result;
+	}
+
+	private static int calculateSizeOfValueArray(Object[] values) {
+		int result = 0;
+		for (Object o : values) {
+			if (o instanceof String) {
+				result += ((String) o).length();
+			} else {
+				result++;
 			}
 		}
 		return result;
