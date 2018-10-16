@@ -62,30 +62,36 @@ public class UnpackTests {
 
 	public void unpack_c_valuesTest() throws JStructException {
 		// TODO fix test
-		byte[] buffer = new byte[6];
-		// a
-		buffer[0] = Byte.valueOf("a");
-		// b
-		buffer[1] = Byte.valueOf("b");
-		// c
-		buffer[2] = Byte.valueOf("c");
-		// x
-		buffer[3] = Byte.valueOf("x");
-		// y
-		buffer[4] = Byte.valueOf("y");
-		// z
-		buffer[5] = Byte.valueOf("z");
+		byte[] buffer = new byte[12];
+		buffer[0] = 72;
+		buffer[1] = 101;
+		buffer[2] = 108;
+		buffer[3] = 108;
+		buffer[4] = 111;
+		buffer[5] = 32;
+		buffer[6] = 87;
+		buffer[7] = 111;
+		buffer[8] = 114;
+		buffer[9] = 108;
+		buffer[10] = 100;
+		buffer[11] = 33;
 
-		JStruct struct = new JStruct("6c");
+		JStruct struct = new JStruct("12c");
 		Object[] values = struct.unpack(buffer);
+		assertEquals(12, values.length);
 
-		assertEquals('B', (char) values[0]);
-		assertEquals('a', (char) values[1]);
-		assertEquals('a', (char) values[2]);
-		assertEquals('a', (char) values[3]);
-		assertEquals('a', (char) values[4]);
-		assertEquals('a', (char) values[5]);
-
+		assertEquals('H', (char) values[0]);
+		assertEquals('e', (char) values[1]);
+		assertEquals('l', (char) values[2]);
+		assertEquals('l', (char) values[3]);
+		assertEquals('o', (char) values[4]);
+		assertEquals(' ', (char) values[5]);
+		assertEquals('W', (char) values[6]);
+		assertEquals('o', (char) values[7]);
+		assertEquals('r', (char) values[8]);
+		assertEquals('l', (char) values[9]);
+		assertEquals('d', (char) values[10]);
+		assertEquals('!', (char) values[11]);
 	}
 
 	@Test
